@@ -1,0 +1,213 @@
+diff --git a/dependencies.lock b/dependencies.lock
+index fefc899..5dadc3f 100644
+--- a/dependencies.lock
++++ b/dependencies.lock
+@@ -17,11 +17,11 @@ dependencies:
+       type: idf
+     version: 4.4.6
+   leeebo/tinyusb_src:
+-    component_hash: 117cb2432654d6f194e0a9a47f87e5f3143312c8b4897601d7b3b9651757734f
++    component_hash: c5d4ef4332a29c7799dcdbee937d305fb48417b69d1dc30c2142c0a009d7671b
+     source:
+       service_url: https://api.components.espressif.com/
+       type: service
+-    version: 0.15.0~7
+-manifest_hash: b6597783385c4b38496cd80e4e82d7c706daa89f68f0c09c37f36971218c34c5
++    version: 0.16.0~1
++manifest_hash: 67567d464eefb97b9e0bf51fbb5545193a1275f20881eca8fb819df1362f90c8
+ target: esp32s3
+ version: 1.0.0
+diff --git a/main/hal/keyboard/keyboard.cpp b/main/hal/keyboard/keyboard.cpp
+index 505b599..268d48c 100644
+--- a/main/hal/keyboard/keyboard.cpp
++++ b/main/hal/keyboard/keyboard.cpp
+@@ -281,7 +281,12 @@ void Keyboard::updateKeysState()
+     // Deal what left
+     for (auto& i : _key_values_without_special_keys)
+     {
+-        if (_keys_state_buffer.ctrl || _keys_state_buffer.shift || _is_caps_locked)
++        if (_keys_state_buffer.fn)
++        {
++            _keys_state_buffer.values.push_back(*getKeyValue(i).value_third);
++            _keys_state_buffer.hidKey.push_back(getKeyValue(i).value_num_third);
++        }
++        else if (_keys_state_buffer.ctrl || _keys_state_buffer.shift || _is_caps_locked)
+         {
+             _keys_state_buffer.values.push_back(*getKeyValue(i).value_second);
+             _keys_state_buffer.hidKey.push_back(getKeyValue(i).value_num_second);
+diff --git a/main/hal/keyboard/keyboard.h b/main/hal/keyboard/keyboard.h
+index 81a7a53..b7469b3 100644
+--- a/main/hal/keyboard/keyboard.h
++++ b/main/hal/keyboard/keyboard.h
+@@ -50,65 +50,68 @@ namespace KEYBOARD
+         const int value_num_first;
+         const char* value_second;
+         const int value_num_second;
++        const char* value_third;
++        const int value_num_third;
+     };
+ 
+-    const KeyValue_t _key_value_map[4][14] = {
+-    {{"`", KEY_GRAVE, "~", KEY_GRAVE},
+-     {"1", KEY_1, "!", KEY_1},
+-     {"2", KEY_2, "@", KEY_2},
+-     {"3", KEY_3, "#", KEY_3},
+-     {"4", KEY_4, "$", KEY_4},
+-     {"5", KEY_5, "%", KEY_5},
+-     {"6", KEY_6, "^", KEY_6},
+-     {"7", KEY_7, "&", KEY_7},
+-     {"8", KEY_8, "*", KEY_KPASTERISK},
+-     {"9", KEY_9, "(", KEY_KPLEFTPAREN},
+-     {"0", KEY_0, ")", KEY_KPRIGHTPAREN},
+-     {"-", KEY_MINUS, "_", KEY_KPMINUS},
+-     {"=", KEY_EQUAL, "+", KEY_KPPLUS},
+-     {"del", KEY_BACKSPACE, "del", KEY_BACKSPACE}},
+-    {{"tab", KEY_TAB, "tab", KEY_TAB},
+-     {"q", KEY_Q, "Q", KEY_Q},
+-     {"w", KEY_W, "W", KEY_W},
+-     {"e", KEY_E, "E", KEY_E},
+-     {"r", KEY_R, "R", KEY_R},
+-     {"t", KEY_T, "T", KEY_T},
+-     {"y", KEY_Y, "Y", KEY_Y},
+-     {"u", KEY_U, "U", KEY_U},
+-     {"i", KEY_I, "I", KEY_I},
+-     {"o", KEY_O, "O", KEY_O},
+-     {"p", KEY_P, "P", KEY_P},
+-     {"[", KEY_LEFTBRACE, "{", KEY_LEFTBRACE},
+-     {"]", KEY_RIGHTBRACE, "}", KEY_RIGHTBRACE},
+-     {"\\", KEY_BACKSLASH, "|", KEY_BACKSLASH}},
+-    {{"fn", 0, "fn", 0},
+-     {"shift", 0, "shift", 0},
+-     {"a", KEY_A, "A", KEY_A},
+-     {"s", KEY_S, "S", KEY_S},
+-     {"d", KEY_D, "D", KEY_D},
+-     {"f", KEY_F, "F", KEY_F},
+-     {"g", KEY_G, "G", KEY_G},
+-     {"h", KEY_H, "H", KEY_H},
+-     {"j", KEY_J, "J", KEY_J},
+-     {"k", KEY_K, "K", KEY_K},
+-     {"l", KEY_L, "L", KEY_L},
+-     {";", KEY_SEMICOLON, ":", KEY_SEMICOLON},
+-     {"'", KEY_APOSTROPHE, "\"", KEY_APOSTROPHE},
+-     {"enter", KEY_ENTER, "enter", KEY_ENTER}},
+-    {{"ctrl", KEY_LEFTCTRL, "ctrl", KEY_LEFTCTRL},
+-     {"opt", 0, "opt", 0},
+-     {"alt", KEY_LEFTALT, "alt", KEY_LEFTALT},
+-     {"z", KEY_Z, "Z", KEY_Z},
+-     {"x", KEY_X, "X", KEY_X},
+-     {"c", KEY_C, "C", KEY_C},
+-     {"v", KEY_V, "V", KEY_V},
+-     {"b", KEY_B, "B", KEY_B},
+-     {"n", KEY_N, "N", KEY_N},
+-     {"m", KEY_M, "M", KEY_M},
+-     {",", KEY_COMMA, "<", KEY_COMMA},
+-     {".", KEY_DOT, ">", KEY_DOT},
+-     {"/", KEY_KPSLASH, "?", KEY_KPSLASH},
+-     {"space", KEY_SPACE, "space", KEY_SPACE}}};
++
++    const KeyValue_t _key_value_map[6][14] = {
++    {{"`", KEY_GRAVE, "~", KEY_GRAVE, "esc", KEY_ESC},
++     {"1", KEY_1, "!", KEY_1, "1", KEY_1},
++     {"2", KEY_2, "@", KEY_2, "2", KEY_2},
++     {"3", KEY_3, "#", KEY_3, "3", KEY_3},
++     {"4", KEY_4, "$", KEY_4, "4", KEY_4},
++     {"5", KEY_5, "%", KEY_5, "5", KEY_5},
++     {"6", KEY_6, "^", KEY_6, "6", KEY_6},
++     {"7", KEY_7, "&", KEY_7, "7", KEY_7},
++     {"8", KEY_8, "*", KEY_KPASTERISK, "8", KEY_8},
++     {"9", KEY_9, "(", KEY_KPLEFTPAREN, "9", KEY_9},
++     {"0", KEY_0, ")", KEY_KPRIGHTPAREN, "0", KEY_0},
++     {"-", KEY_MINUS, "_", KEY_KPMINUS, "-", KEY_MINUS},
++     {"=", KEY_EQUAL, "+", KEY_KPPLUS, "=", KEY_EQUAL},
++     {"Backspace", KEY_BACKSPACE, "Backspace", KEY_BACKSPACE, "del", KEY_DELETE}},
++    {{"tab", KEY_TAB, "tab", KEY_TAB, "tab", KEY_TAB},
++     {"q", KEY_Q, "Q", KEY_Q, "q", KEY_Q},
++     {"w", KEY_W, "W", KEY_W, "w", KEY_W},
++     {"e", KEY_E, "E", KEY_E, "e", KEY_E},
++     {"r", KEY_R, "R", KEY_R, "r", KEY_R},
++     {"t", KEY_T, "T", KEY_T, "t", KEY_T},
++     {"y", KEY_Y, "Y", KEY_Y, "y", KEY_Y},
++     {"u", KEY_U, "U", KEY_U, "u", KEY_U},
++     {"i", KEY_I, "I", KEY_I, "i", KEY_I},
++     {"o", KEY_O, "O", KEY_O, "o", KEY_O},
++     {"p", KEY_P, "P", KEY_P, "p", KEY_P},
++     {"[", KEY_LEFTBRACE, "{", KEY_LEFTBRACE, "[", KEY_LEFTBRACE},
++     {"]", KEY_RIGHTBRACE, "}", KEY_RIGHTBRACE, "]", KEY_RIGHTBRACE},
++     {"\\", KEY_BACKSLASH, "|", KEY_BACKSLASH, "\\", KEY_BACKSLASH}},
++    {{"fn", 0, "fn", 0, "fn", 0},
++     {"shift", 0, "shift", 0, "shift", 0},
++     {"a", KEY_A, "A", KEY_A, "a", KEY_A},
++     {"s", KEY_S, "S", KEY_S, "s", KEY_S},
++     {"d", KEY_D, "D", KEY_D, "d", KEY_D},
++     {"f", KEY_F, "F", KEY_F, "f", KEY_F},
++     {"g", KEY_G, "G", KEY_G, "g", KEY_G},
++     {"h", KEY_H, "H", KEY_H, "h", KEY_H},
++     {"j", KEY_J, "J", KEY_J, "j", KEY_J},
++     {"k", KEY_K, "K", KEY_K, "k", KEY_K},
++     {"l", KEY_L, "L", KEY_L, "l", KEY_L},
++     {";", KEY_SEMICOLON, ":", KEY_SEMICOLON, "up", KEY_UP},
++     {"'", KEY_APOSTROPHE, "\"", KEY_APOSTROPHE, "'", KEY_APOSTROPHE},
++     {"enter", KEY_ENTER, "enter", KEY_ENTER, "enter", KEY_ENTER}},
++    {{"ctrl", KEY_LEFTCTRL, "ctrl", KEY_LEFTCTRL, "ctrl", KEY_LEFTCTRL},
++     {"opt", 0, "opt", 0, "opt", 0},
++     {"alt", KEY_LEFTALT, "alt", KEY_LEFTALT, "alt", KEY_LEFTALT},
++     {"z", KEY_Z, "Z", KEY_Z, "z", KEY_Z},
++     {"x", KEY_X, "X", KEY_X, "x", KEY_X},
++     {"c", KEY_C, "C", KEY_C, "c", KEY_C},
++     {"v", KEY_V, "V", KEY_V, "v", KEY_V},
++     {"b", KEY_B, "B", KEY_B, "b", KEY_B},
++     {"n", KEY_N, "N", KEY_N, "n", KEY_N},
++     {"m", KEY_M, "M", KEY_M, "m", KEY_M},
++     {",", KEY_COMMA, "<", KEY_COMMA, "left", KEY_LEFT},
++     {".", KEY_DOT, ">", KEY_DOT, "down", KEY_DOWN},
++     {"/", KEY_KPSLASH, "?", KEY_KPSLASH, "right", KEY_RIGHT},
++     {"space", KEY_SPACE, "space", KEY_SPACE, "space", KEY_SPACE}}};
+ 
+     class Keyboard
+     {
+diff --git a/main/hal/keyboard/keymap.h b/main/hal/keyboard/keymap.h
+index 379efe0..f2401c9 100644
+--- a/main/hal/keyboard/keymap.h
++++ b/main/hal/keyboard/keymap.h
+@@ -135,8 +135,8 @@
+ #define KEY_INSERT     0x49  // Keyboard Insert
+ #define KEY_HOME       0x4a  // Keyboard Home
+ #define KEY_PAGEUP     0x4b  // Keyboard Page Up
+-// #define KEY_DELETE 0x4c // Keyboard Delete Forward
+-#define KEY_DELETE   0xD4  // Keyboard Delete Forward
++#define KEY_DELETE 0x4c // Keyboard Delete Forward
++// #define KEY_DELETE   0xD4  // Keyboard Delete Forward
+ #define KEY_END      0x4d  // Keyboard End
+ #define KEY_PAGEDOWN 0x4e  // Keyboard Page Down
+ #define KEY_RIGHT    0x4f  // Keyboard Right Arrow
+diff --git a/sdkconfig b/sdkconfig
+index 970df93..a6c36d5 100644
+--- a/sdkconfig
++++ b/sdkconfig
+@@ -890,7 +890,7 @@ CONFIG_ESP32_WIFI_RX_IRAM_OPT=y
+ CONFIG_ESP32_WIFI_ENABLE_WPA3_SAE=y
+ # CONFIG_ESP_WIFI_SLP_IRAM_OPT is not set
+ # CONFIG_ESP_WIFI_FTM_ENABLE is not set
+-# CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE is not set
++CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE=y
+ # CONFIG_ESP_WIFI_GCMP_SUPPORT is not set
+ # CONFIG_ESP_WIFI_GMAC_SUPPORT is not set
+ CONFIG_ESP_WIFI_SOFTAP_SUPPORT=y
+@@ -1010,7 +1010,7 @@ CONFIG_FREERTOS_CHECK_MUTEX_GIVEN_BY_OWNER=y
+ # CONFIG_FREERTOS_PLACE_FUNCTIONS_INTO_FLASH is not set
+ CONFIG_FREERTOS_DEBUG_OCDAWARE=y
+ CONFIG_FREERTOS_ENABLE_TASK_SNAPSHOT=y
+-# CONFIG_FREERTOS_PLACE_SNAPSHOT_FUNS_INTO_FLASH is not set
++CONFIG_FREERTOS_PLACE_SNAPSHOT_FUNS_INTO_FLASH=y
+ # end of FreeRTOS
+ 
+ #
+@@ -1246,7 +1246,7 @@ CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_MAX_CERTS=200
+ # end of Certificate Bundle
+ 
+ # CONFIG_MBEDTLS_ECP_RESTARTABLE is not set
+-# CONFIG_MBEDTLS_CMAC_C is not set
++CONFIG_MBEDTLS_CMAC_C=y
+ CONFIG_MBEDTLS_HARDWARE_AES=y
+ CONFIG_MBEDTLS_AES_USE_INTERRUPT=y
+ CONFIG_MBEDTLS_HARDWARE_MPI=y
