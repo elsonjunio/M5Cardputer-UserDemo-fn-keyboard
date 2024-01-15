@@ -1,6 +1,6 @@
 Tecla fn do M5Cardputer
 
-No código de demonstração do M5Cardputer ao utiliza-lo como teclado, percebi a tecla `fn` não estava funcionando, ela deveria ativar as teclas de navegação, delete e esc. Criei este patch para adicionar esta funcionalidade.
+No código de demonstração do M5Cardputer ao utiliza-lo como teclado, percebi que a tecla `fn` não estava funcionando, ela deveria ativar as teclas de navegação, delete e esc. Criei este patch para adicionar esta funcionalidade.
 
 
 ```
